@@ -28,6 +28,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
   const [connectAttemptAt, setConnectAttemptAt] = useState<number>(0);
+  const [fallbackTried, setFallbackTried] = useState(false);
 
   const conversation = useConversation({
     clientTools: {
@@ -54,9 +55,34 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     onDisconnect: () => {
       console.log('AI Coach disconnected');
       onCoachingStop();
+      const justAttempted = !!connectAttemptAt && Date.now() - connectAttemptAt < 5000;
+
+      // Auto-fallback: if public agent drops instantly, try private signed URL once
+      if (!usePrivate && justAttempted && !fallbackTried) {
+        console.log('Attempting private signed-URL fallback after quick disconnect');
+        setFallbackTried(true);
+        (async () => {
+          try {
+            const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
+              body: { agentId: agentId.trim() },
+            });
+            if (error) throw new Error(error.message || 'Failed to get signed URL');
+            const signedUrl = (data as any)?.signed_url;
+            if (!signedUrl) throw new Error('Invalid signed URL response');
+            await conversation.startSession({ url: signedUrl } as any);
+            alert('Switched to private connection automatically.');
+          } catch (e) {
+            console.error('Fallback connection failed:', e);
+            const msg = (e as any)?.message || JSON.stringify(e) || 'Unknown error';
+            alert(`Coach disconnected and fallback failed: ${msg}`);
+          }
+        })();
+        return;
+      }
+
       if (lastError) {
         alert(`Coach disconnected: ${lastError}`);
-      } else if (connectAttemptAt && Date.now() - connectAttemptAt < 5000) {
+      } else if (justAttempted) {
         alert('Coach disconnected right after connecting. If your agent is private, enable "Use private agent" to use the signed URL. If it\'s public, ensure the agent is set to Public/Live in ElevenLabs.');
       }
     },
