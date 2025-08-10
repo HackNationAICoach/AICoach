@@ -142,7 +142,7 @@ const Index = () => {
               />
               
               {/* Pose Detection Overlay */}
-              {videoStream && isSessionActive && (
+              {isSessionActive && (
                 <div className="absolute inset-0 pointer-events-none z-30">
                   <PoseDetection
                     videoStream={videoStream}

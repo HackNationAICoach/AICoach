@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { Pose } from '@mediapipe/pose';
 
 
 
@@ -38,29 +39,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const [videoDims, setVideoDims] = useState<{w:number;h:number}>({ w: 0, h: 0 });
   const lastTimeRef = useRef<number>(0);
 
-  // Lazy-load global MediaPipe Pose from CDN if not present
-  const ensurePoseLoaded = async () => {
-    const w = window as any;
-    if (w && w.Pose && (w.Pose.Pose || typeof w.Pose === 'function')) return;
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      script.onload = () => resolve();
-      script.onerror = () => {
-        const fallback = document.createElement('script');
-        fallback.src = 'https://unpkg.com/@mediapipe/pose@0.5.1675469404/pose.js';
-        fallback.async = true;
-        fallback.crossOrigin = 'anonymous';
-        fallback.onload = () => resolve();
-        fallback.onerror = () => reject(new Error('Failed to load MediaPipe Pose script'));
-        document.head.appendChild(fallback);
-      };
-      document.head.appendChild(script);
-    });
-    await Promise.resolve();
-  };
+  // Using bundled @mediapipe/pose import; no dynamic script loading
   const analyzeSquat = (landmarks: any[]): SquatAnalysis => {
     if (!landmarks || landmarks.length === 0) {
       return {
@@ -228,16 +207,10 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (poseRef.current) return;
 
       try {
-        await ensurePoseLoaded();
-        const w = window as any;
-        const PoseNS = w.Pose;
-        const PoseCtor = PoseNS?.Pose || PoseNS;
-        if (!PoseCtor) throw new Error('MediaPipe Pose not available on window');
-
-        poseRef.current = new PoseCtor({
+        poseRef.current = new Pose({
           locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
         });
-        console.log('[PoseDetection] Pose instance created (global), assets from jsDelivr (pinned)');
+        console.log('[PoseDetection] Pose instance created (bundled import), assets from jsDelivr (pinned)');
 
         poseRef.current.setOptions({
           modelComplexity: 1,
@@ -351,7 +324,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   }, [videoStream, isActive, sourceVideo]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-30" aria-label="Pose overlay">
+    <div className="absolute inset-0 pointer-events-none z-40" aria-label="Pose overlay">
       <video
         ref={videoRef}
         className="absolute pointer-events-none opacity-0 w-px h-px -z-10"
@@ -365,7 +338,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         className="absolute inset-0 w-full h-full"
         width={1280}
         height={720}
-        style={{ zIndex: 10 }}
+        style={{ zIndex: 10, transform: 'scaleX(-1)', transformOrigin: 'center' }}
       />
 
       {/* Debug HUD */}
