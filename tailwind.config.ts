@@ -52,16 +52,40 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
+				/* Fitness Coach Custom Colors */
+				coach: {
+					surface: 'var(--coach-surface)',
+					'surface-elevated': 'var(--coach-surface-elevated)',
+					'accent-soft': 'var(--coach-accent-soft)',
+					'accent-medium': 'var(--coach-accent-medium)',
+				},
+				exercise: {
+					active: 'var(--exercise-active)',
+					rest: 'var(--exercise-rest)',
+				},
+				form: {
+					correct: 'var(--form-correct)',
+					incorrect: 'var(--form-incorrect)',
+				},
+				timer: {
+					background: 'var(--timer-background)',
+					foreground: 'var(--timer-foreground)',
+					accent: 'var(--timer-accent)',
 				}
+			},
+			backgroundImage: {
+				'energy-gradient': 'var(--energy-gradient)',
+				'motivation-gradient': 'var(--motivation-gradient)',
+				'success-gradient': 'var(--success-gradient)',
+				'warning-gradient': 'var(--warning-gradient)',
+			},
+			boxShadow: {
+				'glow-primary': 'var(--glow-primary)',
+				'glow-accent': 'var(--glow-accent)',
+			},
+			transitionTimingFunction: {
+				'smooth': 'var(--transition-smooth)',
+				'bounce': 'var(--transition-bounce)',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
