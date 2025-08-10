@@ -260,7 +260,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   }, [videoStream, isActive]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none z-30">
       <video
         ref={videoRef}
         className="hidden"

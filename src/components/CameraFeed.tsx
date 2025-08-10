@@ -33,21 +33,21 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
         console.log('Setting video source...');
         videoRef.current.srcObject = stream;
 
-        // Ensure the video is ready before marking streaming true
+        // Mark streaming immediately so UI and overlay can attach
+        setIsStreaming(true);
+        onVideoStream(stream);
+
+        // Attempt to play immediately
+        const playPromise = videoRef.current.play();
+        if (playPromise && typeof (playPromise as any).catch === 'function') {
+          (playPromise as Promise<void>).catch((err) => console.log('Autoplay prevented:', err));
+        }
+
+        // Also ensure play after metadata just in case
         videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, video ready');
-          setIsStreaming(true);
-          onVideoStream(stream);
-
-          videoRef.current?.play().catch((err) => {
-            console.log('Autoplay prevented:', err);
-          });
+          console.log('Video metadata loaded');
+          videoRef.current?.play().catch((err) => console.log('Autoplay prevented:', err));
         };
-
-        // Try to play immediately as well (some browsers already have metadata)
-        videoRef.current.play().catch((err) => {
-          console.log('Initial play prevented:', err);
-        });
       } else {
         console.log('Video element not yet mounted; will set on mount');
       }
