@@ -94,8 +94,8 @@ export const CameraFeed = React.forwardRef<HTMLVideoElement, CameraFeedProps>(({
   }, []);
 
   return (
-    <Card className="relative overflow-hidden bg-coach-surface border-primary/20 sm:border border-0 sm:rounded-lg rounded-none sm:h-auto h-[100dvh] sm:w-auto w-screen">
-      <div className="relative h-full sm:aspect-video">
+    <Card className="relative overflow-hidden bg-coach-surface border-primary/20">
+      <div className="aspect-video relative">
         {/* Always render the video so the ref exists when starting the camera */}
         <video
           ref={(node) => {

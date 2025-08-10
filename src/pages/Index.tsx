@@ -56,7 +56,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className={cn("border-b border-border bg-coach-surface", isSessionActive ? "hidden sm:block" : "")}>
+      <header className="border-b border-border bg-coach-surface">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ const Index = () => {
         </div>
       </header>
 
-      <div className={cn("container mx-auto", isSessionActive ? "px-0 py-0 sm:px-4 sm:py-6" : "px-4 py-6")}>
+      <div className="container mx-auto px-4 py-6">
         {/* Get Started Section */}
         {showGetStarted && (
           <Card className="mb-6 p-8 bg-motivation-gradient text-white border-0 relative overflow-hidden">
