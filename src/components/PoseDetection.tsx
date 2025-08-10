@@ -40,14 +40,23 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const ensurePoseLoaded = async () => {
     const w = window as any;
     if (w && w.Pose) return;
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load MediaPipe pose.js'));
-      document.head.appendChild(script);
+
+    const load = (src: string) => new Promise<void>((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error(`Failed to load ${src}`));
+      document.head.appendChild(s);
     });
+
+    try {
+      await load('https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js');
+    } catch (e) {
+      console.warn('[PoseDetection] jsDelivr failed, trying unpkg', e);
+      await load('https://unpkg.com/@mediapipe/pose@0.5.1675469404/pose.js');
+    }
   };
   const analyzeSquat = (landmarks: any[]): SquatAnalysis => {
     if (!landmarks || landmarks.length === 0) {
