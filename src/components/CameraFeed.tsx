@@ -32,18 +32,21 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
         console.log('Setting video source...');
         videoRef.current.srcObject = stream;
         
-        // Wait for video to load metadata
+        // Immediately set streaming state and call onVideoStream
+        setIsStreaming(true);
+        setError(null);
+        onVideoStream(stream);
+        
+        // Wait for video to load metadata and start playing
         videoRef.current.onloadedmetadata = () => {
           console.log('Video metadata loaded');
-          videoRef.current?.play().then(() => {
-            console.log('Video started playing');
-            setIsStreaming(true);
-            setError(null);
-            onVideoStream(stream);
-          }).catch(err => {
-            console.error('Error playing video:', err);
-            setError('Failed to start video playback');
-          });
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              console.log('Video started playing');
+            }).catch(err => {
+              console.error('Error playing video:', err);
+            });
+          }
         };
       }
     } catch (err) {
