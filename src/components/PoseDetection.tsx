@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Pose } from '@mediapipe/pose';
-import { Camera } from '@mediapipe/camera_utils';
+
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 
 interface PoseDetectionProps {
@@ -25,7 +25,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const poseRef = useRef<Pose | null>(null);
-  const cameraRef = useRef<Camera | null>(null);
+  const rafRef = useRef<number | null>(null);
   const [squatAnalysis, setSquatAnalysis] = useState<SquatAnalysis | null>(null);
   const [poseReady, setPoseReady] = useState(false);
   const [fps, setFps] = useState(0);
@@ -217,8 +217,9 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     initializePose();
 
     return () => {
-      if (cameraRef.current) {
-        cameraRef.current.stop();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
   }, [isActive]);
@@ -230,44 +231,46 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     if (!video) return;
 
     video.srcObject = videoStream;
-    
-    const startCamera = () => {
-      console.log('PoseDetection: starting MediaPipe camera');
-      if (cameraRef.current) {
-        cameraRef.current.stop();
-      }
 
-      cameraRef.current = new Camera(video, {
-        onFrame: async () => {
-          if (poseRef.current) {
-            await poseRef.current.send({ image: video });
-          }
-        },
-        width: 1280,
-        height: 720
-      });
-
-      cameraRef.current.start();
+    let active = true;
+    const startLoop = () => {
+      const render = async () => {
+        if (!active) return;
+        if (poseRef.current) {
+          await poseRef.current.send({ image: video });
+        }
+        rafRef.current = requestAnimationFrame(render);
+      };
+      rafRef.current = requestAnimationFrame(render);
     };
 
-    // Ensure playback and start even if metadata already loaded
-    try { video.play(); } catch (e) { /* ignore */ }
-    if (video.readyState >= 1) {
-      startCamera();
+    // Ensure playback and start loop even if metadata already loaded
+    const startIfReady = () => {
+      try { video.play(); } catch {}
+      startLoop();
+    };
+
+    if (video.readyState >= 2) {
+      startIfReady();
     } else {
-      video.addEventListener('loadedmetadata', startCamera, { once: true });
+      video.addEventListener('loadeddata', startIfReady, { once: true });
     }
 
     return () => {
-      if (cameraRef.current) {
-        cameraRef.current.stop();
+      active = false;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
-      video.removeEventListener('loadedmetadata', startCamera);
+      video.removeEventListener('loadeddata', startIfReady);
+      // Do not stop tracks here; CameraFeed controls the lifecycle
+      // Just detach to avoid leaks
+      video.srcObject = null;
     };
   }, [videoStream, isActive]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-30">
+    <div className="absolute inset-0 pointer-events-none z-30" aria-label="Pose overlay">
       <video
         ref={videoRef}
         className="hidden"
