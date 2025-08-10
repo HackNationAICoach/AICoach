@@ -8,7 +8,7 @@ interface CameraFeedProps {
   isActive: boolean;
 }
 
-export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive }) => {
+export const CameraFeed = React.forwardRef<HTMLVideoElement, CameraFeedProps>(({ onVideoStream, isActive }, forwardedRef) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -96,7 +96,14 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
       <div className="aspect-video relative">
         {/* Always render the video so the ref exists when starting the camera */}
         <video
-          ref={videoRef}
+          ref={(node) => {
+            videoRef.current = node;
+            if (typeof forwardedRef === 'function') {
+              forwardedRef(node);
+            } else if (forwardedRef && 'current' in (forwardedRef as any)) {
+              (forwardedRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
+            }
+          }}
           autoPlay
           playsInline
           muted
@@ -145,4 +152,5 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
       </div>
     </Card>
   );
-};
+});
+

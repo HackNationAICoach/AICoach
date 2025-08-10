@@ -7,6 +7,7 @@ interface PoseDetectionProps {
   videoStream: MediaStream | null;
   onPoseResults: (results: any) => void;
   isActive: boolean;
+  sourceVideo?: HTMLVideoElement | null;
 }
 
 interface SquatAnalysis {
@@ -20,7 +21,8 @@ interface SquatAnalysis {
 export const PoseDetection: React.FC<PoseDetectionProps> = ({ 
   videoStream, 
   onPoseResults, 
-  isActive 
+  isActive,
+  sourceVideo
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -264,12 +266,14 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   }, [isActive]);
 
   useEffect(() => {
-    if (!videoStream || !poseRef.current || !isActive) return;
+    if (!(videoStream || sourceVideo) || !poseRef.current || !isActive) return;
 
-    const video = videoRef.current;
-    if (!video) return;
+    const srcEl = (sourceVideo as HTMLVideoElement | null) || videoRef.current;
+    if (!srcEl) return;
 
-    video.srcObject = videoStream;
+    if (!sourceVideo && videoStream) {
+      (srcEl as HTMLVideoElement).srcObject = videoStream;
+    }
 
     let active = true;
     const startLoop = () => {
@@ -278,8 +282,8 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         if (poseRef.current) {
           try {
             // ensure video dimensions available
-            const vw = (video as HTMLVideoElement).videoWidth || 0;
-            const vh = (video as HTMLVideoElement).videoHeight || 0;
+            const vw = (srcEl as HTMLVideoElement).videoWidth || 0;
+            const vh = (srcEl as HTMLVideoElement).videoHeight || 0;
             if (vw > 0 && vh > 0) {
               if (canvasRef.current) {
                 if (canvasRef.current.width !== vw || canvasRef.current.height !== vh) {
@@ -288,7 +292,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
                   setVideoDims({ w: vw, h: vh });
                 }
               }
-              await poseRef.current.send({ image: video });
+              await poseRef.current.send({ image: srcEl });
               setSends((s) => s + 1);
             }
           } catch (err: any) {
@@ -308,18 +312,20 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (started) return;
       started = true;
       try {
-        const p = video.play();
-        if (typeof (p as any)?.catch === 'function') (p as Promise<void>).catch(() => {});
+        if (!sourceVideo) {
+          const p = (srcEl as HTMLVideoElement).play();
+          if (typeof (p as any)?.catch === 'function') (p as Promise<void>).catch(() => {});
+        }
       } catch {}
       startLoop();
-      console.log('[PoseDetection] startIfReady -> loop started, readyState:', video.readyState);
+      console.log('[PoseDetection] startIfReady -> loop started, readyState:', (srcEl as HTMLVideoElement).readyState);
     };
 
-    if (video.readyState >= 2) {
+    if ((srcEl as HTMLVideoElement).readyState >= 2) {
       startIfReady();
     } else {
       const evs: Array<keyof HTMLVideoElementEventMap> = ['loadedmetadata','loadeddata','canplay','playing'];
-      evs.forEach((ev) => video.addEventListener(ev, startIfReady, { once: true } as any));
+      evs.forEach((ev) => (srcEl as HTMLVideoElement).addEventListener(ev, startIfReady, { once: true } as any));
       // Fallback in case events don't fire on some browsers
       startTimeout = window.setTimeout(() => {
         if (!started) startIfReady();
@@ -335,14 +341,14 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (startTimeout) {
         clearTimeout(startTimeout);
       }
-      ['loadedmetadata','loadeddata','canplay','playing'].forEach((ev) => {
-        video.removeEventListener(ev as any, startIfReady as any);
+      ;['loadedmetadata','loadeddata','canplay','playing'].forEach((ev) => {
+        (srcEl as HTMLVideoElement).removeEventListener(ev as any, startIfReady as any);
       });
       // Do not stop tracks here; CameraFeed controls the lifecycle
       // Just detach to avoid leaks
-      video.srcObject = null;
+      if (!sourceVideo) (srcEl as HTMLVideoElement).srcObject = null;
     };
-  }, [videoStream, isActive]);
+  }, [videoStream, isActive, sourceVideo]);
 
   return (
     <div className="absolute inset-0 pointer-events-none z-30" aria-label="Pose overlay">
@@ -379,7 +385,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         ) : (
           <>
             <div className="text-[10px] text-muted-foreground">FPS: {fps} | Landmarks: {landmarkCount} | Sends: {sends} | Results: {resultsCount}</div>
-            <div className="text-[10px] text-muted-foreground">Video: {videoDims.w}x{videoDims.h} rs:{videoRef.current?.readyState ?? 0}</div>
+            <div className="text-[10px] text-muted-foreground">Video: {videoDims.w}x{videoDims.h} rs:{(sourceVideo ? sourceVideo.readyState : videoRef.current?.readyState) ?? 0}</div>
           </>
         )}
       </div>

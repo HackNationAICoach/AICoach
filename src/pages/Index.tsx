@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CameraFeed } from '@/components/CameraFeed';
 import { PoseDetection, type SquatAnalysis } from '@/components/PoseDetection';
 import { VoiceCoach } from '@/components/VoiceCoach';
@@ -16,6 +16,8 @@ const Index = () => {
   const [currentExercise, setCurrentExercise] = useState('squats');
   const [squatAnalysis, setSquatAnalysis] = useState<SquatAnalysis | null>(null);
   const [showGetStarted, setShowGetStarted] = useState(true);
+
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
 
   const handleVideoStream = (stream: MediaStream | null) => {
     setVideoStream(stream);
@@ -133,6 +135,7 @@ const Index = () => {
             {/* Camera Feed */}
             <div className="relative">
               <CameraFeed
+                ref={cameraVideoRef}
                 onVideoStream={handleVideoStream}
                 isActive={isSessionActive}
               />
@@ -144,6 +147,7 @@ const Index = () => {
                     videoStream={videoStream}
                     onPoseResults={handlePoseResults}
                     isActive={isSessionActive}
+                    sourceVideo={cameraVideoRef.current}
                   />
                 </div>
               )}
