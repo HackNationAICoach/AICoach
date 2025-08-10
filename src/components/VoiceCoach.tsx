@@ -27,6 +27,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const [volume, setVolume] = useState(0.8);
   const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [connectAttemptAt, setConnectAttemptAt] = useState<number>(0);
 
   const conversation = useConversation({
     clientTools: {
@@ -55,6 +56,8 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       onCoachingStop();
       if (lastError) {
         alert(`Coach disconnected: ${lastError}`);
+      } else if (connectAttemptAt && Date.now() - connectAttemptAt < 5000) {
+        alert('Coach disconnected right after connecting. If your agent is private, enable "Use private agent" to use the signed URL. If it\'s public, ensure the agent is set to Public/Live in ElevenLabs.');
       }
     },
     onMessage: (message) => {
@@ -118,6 +121,8 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     }
 
     try {
+      setConnectAttemptAt(Date.now());
+      setLastError(null);
       console.log('Starting coaching session...', { usePrivate, agentId: agentId.trim() });
       if (usePrivate) {
         const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
