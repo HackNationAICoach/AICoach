@@ -22,7 +22,8 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   isActive,
   currentExercise,
 }) => {
-  const [agentId, setAgentId] = useState(() => localStorage.getItem('eleven_agent_id') || '');
+  const HARD_CODED_AGENT_ID = 'agent_1401k28a2a06fee9xm5kv0j8mbmg';
+  const [agentId, setAgentId] = useState(HARD_CODED_AGENT_ID);
   const [usePrivate, setUsePrivate] = useState(() => localStorage.getItem('eleven_private') === 'true');
   const [volume, setVolume] = useState(0.8);
   const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
@@ -347,13 +348,13 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
         {/* Agent Configuration */}
         <div className="p-4 bg-coach-accent-soft rounded-lg border border-primary/20 space-y-3">
           <div className="grid grid-cols-1 gap-2">
-            <label className="text-sm text-foreground font-medium">ElevenLabs Agent ID</label>
-            <input
-              value={agentId}
-              onChange={(e) => setAgentId(e.target.value)}
-              placeholder="Paste your Agent ID"
-              className="w-full px-3 py-2 rounded-md border border-primary/20 bg-coach-surface text-foreground"
-            />
+            <label className="text-sm text-foreground font-medium">ElevenLabs Agent ID (hardcoded)</label>
+            <div
+              className="w-full px-3 py-2 rounded-md border border-primary/20 bg-coach-surface text-foreground font-mono text-xs select-all"
+              aria-label="Hardcoded Agent ID"
+            >
+              {agentId}
+            </div>
           </div>
           <label className="flex items-center justify-between text-sm text-foreground">
             <span>Use private agent (requires XI_API_KEY secret)</span>
