@@ -15,6 +15,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
 
   const startCamera = async () => {
     try {
+      console.log('Requesting camera access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           width: { ideal: 1280 },
@@ -24,11 +25,26 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
         audio: false
       });
       
+      console.log('Camera stream obtained:', stream);
+      console.log('Video tracks:', stream.getVideoTracks());
+      
       if (videoRef.current) {
+        console.log('Setting video source...');
         videoRef.current.srcObject = stream;
-        setIsStreaming(true);
-        setError(null);
-        onVideoStream(stream);
+        
+        // Wait for video to load metadata
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          videoRef.current?.play().then(() => {
+            console.log('Video started playing');
+            setIsStreaming(true);
+            setError(null);
+            onVideoStream(stream);
+          }).catch(err => {
+            console.error('Error playing video:', err);
+            setError('Failed to start video playback');
+          });
+        };
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
