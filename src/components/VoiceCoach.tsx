@@ -221,11 +221,6 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       const raw: any = error;
       const message = (raw && (raw.message || raw.reason || raw.code)) || JSON.stringify(raw) || 'Unknown error';
       alert(`Could not start coaching: ${message}`);
-      if (!safeMode) {
-        log('Start failed with overrides; enabling Safe mode (no overrides)');
-        setSafeMode(true);
-        alert('Safe mode enabled (disables overrides). Try Start again.');
-      }
     }
   };
 
