@@ -240,6 +240,7 @@ const Index = () => {
               onCoachingStart={handleCoachingStart}
               onCoachingStop={handleCoachingStop}
               isActive={isCoachingActive}
+              currentExercise={currentExercise}
             />
           </div>
         </div>

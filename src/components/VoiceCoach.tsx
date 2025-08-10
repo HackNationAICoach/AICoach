@@ -11,19 +11,39 @@ interface VoiceCoachProps {
   onCoachingStart: () => void;
   onCoachingStop: () => void;
   isActive: boolean;
+  currentExercise: string;
 }
 
 export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   squatAnalysis,
   onCoachingStart,
   onCoachingStop,
-  isActive
+  isActive,
+  currentExercise,
 }) => {
-  const [agentId] = useState(''); // User will need to provide this
+  const [agentId, setAgentId] = useState(() => localStorage.getItem('eleven_agent_id') || '');
+  const [usePrivate, setUsePrivate] = useState(() => localStorage.getItem('eleven_private') === 'true');
   const [volume, setVolume] = useState(0.8);
   const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
 
   const conversation = useConversation({
+    clientTools: {
+      getPostureSnapshot: () => {
+        const snapshot = squatAnalysis
+          ? {
+              isSquatting: squatAnalysis.isSquatting,
+              depth: Math.round(squatAnalysis.depth),
+              knees: squatAnalysis.kneeAlignment,
+              back: squatAnalysis.backAlignment,
+            }
+          : null;
+        const summary = snapshot
+          ? `Move: ${currentExercise}. ${snapshot.isSquatting ? 'Squatting' : 'Standing'}. Depth ${snapshot.depth}%. Knees ${snapshot.knees}. Back ${snapshot.back}.`
+          : `Move: ${currentExercise}. No posture detected yet.`;
+        return summary; // tools must return string/number/void
+      },
+      getCurrentMove: () => currentExercise,
+    },
     onConnect: () => {
       console.log('AI Coach connected');
       onCoachingStart();
@@ -46,6 +66,9 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
           Be encouraging, specific, and constructive in your feedback. 
           Keep instructions clear and concise. Focus on safety and proper form.
           
+          You can call client tools to get the latest posture or selected move: getPostureSnapshot(), getCurrentMove().
+          When replying, be short and specific: either "Great rep!" or a single correction.
+          
           When the user is performing squats, provide feedback on:
           - Squat depth and whether they're reaching proper depth
           - Knee alignment and tracking
@@ -54,13 +77,20 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
           
           Be motivational and positive while being specific about corrections needed.`
         },
-        firstMessage: "Hey there! I'm your AI fitness coach. I'm here to help you perfect your squat form. Let's get started - I'll be watching your movement and giving you real-time feedback. Ready to begin?",
+        firstMessage: "Hey there! I'm your AI fitness coach. When you're ready, say 'start coaching'. I'll watch your movement and give concise feedback.",
         language: "en"
       }
     }
   });
 
   const { status, isSpeaking } = conversation;
+
+  useEffect(() => {
+    localStorage.setItem('eleven_agent_id', agentId);
+  }, [agentId]);
+  useEffect(() => {
+    localStorage.setItem('eleven_private', String(usePrivate));
+  }, [usePrivate]);
 
   const startCoaching = async () => {
     if (!agentId) {
@@ -69,9 +99,22 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     }
 
     try {
-      await conversation.startSession({ agentId });
+      if (usePrivate) {
+        const res = await fetch('/functions/v1/eleven-signed-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId })
+        });
+        if (!res.ok) throw new Error('Failed to get signed URL');
+        const data = await res.json();
+        if (!data?.signed_url) throw new Error('Invalid signed URL response');
+        await conversation.startSession({ authorization: data.signed_url } as any);
+      } else {
+        await conversation.startSession({ agentId });
+      }
     } catch (error) {
       console.error('Failed to start coaching session:', error);
+      alert('Could not start coaching. Check your agent settings.');
     }
   };
 
@@ -140,16 +183,28 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
         </div>
 
         {/* Agent Configuration */}
-        {!agentId && (
-          <div className="p-4 bg-coach-accent-soft rounded-lg border border-primary/20">
-            <p className="text-sm text-foreground mb-2">
-              To enable voice coaching, you'll need to configure your ElevenLabs Agent ID.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Create a conversational AI agent in your ElevenLabs dashboard and add the ID here.
-            </p>
+        <div className="p-4 bg-coach-accent-soft rounded-lg border border-primary/20 space-y-3">
+          <div className="grid grid-cols-1 gap-2">
+            <label className="text-sm text-foreground font-medium">ElevenLabs Agent ID</label>
+            <input
+              value={agentId}
+              onChange={(e) => setAgentId(e.target.value)}
+              placeholder="Paste your Agent ID"
+              className="w-full px-3 py-2 rounded-md border border-primary/20 bg-coach-surface text-foreground"
+            />
           </div>
-        )}
+          <label className="flex items-center justify-between text-sm text-foreground">
+            <span>Use private agent (requires XI_API_KEY secret)</span>
+            <input
+              type="checkbox"
+              checked={usePrivate}
+              onChange={(e) => setUsePrivate(e.target.checked)}
+            />
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Private mode mints a signed URL from a Supabase Edge Function using your ElevenLabs API key stored as a Supabase secret.
+          </p>
+        </div>
 
         {/* Controls */}
         <div className="flex items-center gap-4">
