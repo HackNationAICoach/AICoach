@@ -42,10 +42,10 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     if (w && w.Pose) return;
     await new Promise<void>((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404';
+      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
       script.async = true;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load MediaPipe Pose script'));
+      script.onerror = () => reject(new Error('Failed to load MediaPipe pose.js'));
       document.head.appendChild(script);
     });
   };
@@ -318,7 +318,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     <div className="absolute inset-0 pointer-events-none z-30" aria-label="Pose overlay">
       <video
         ref={videoRef}
-        className="hidden"
+        className="absolute w-px h-px opacity-0 pointer-events-none"
         playsInline
         muted
       />
