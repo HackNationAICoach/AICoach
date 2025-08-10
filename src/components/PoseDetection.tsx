@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Pose } from '@mediapipe/pose';
+import * as mpPose from '@mediapipe/pose';
 
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 
@@ -24,7 +24,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const poseRef = useRef<Pose | null>(null);
+  const poseRef = useRef<any | null>(null);
   const rafRef = useRef<number | null>(null);
   const [squatAnalysis, setSquatAnalysis] = useState<SquatAnalysis | null>(null);
   const [poseReady, setPoseReady] = useState(false);
@@ -204,7 +204,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (poseRef.current) return;
 
       try {
-        poseRef.current = new Pose({
+        poseRef.current = new mpPose.Pose({
           locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
         });
         console.log('[PoseDetection] Pose instance created, loading assets from jsDelivr (pinned)');
