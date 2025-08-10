@@ -27,6 +27,10 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const poseRef = useRef<Pose | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const [squatAnalysis, setSquatAnalysis] = useState<SquatAnalysis | null>(null);
+  const [poseReady, setPoseReady] = useState(false);
+  const [fps, setFps] = useState(0);
+  const [landmarkCount, setLandmarkCount] = useState(0);
+  const lastTimeRef = useRef<number>(0);
 
   // Analyze squat form from pose landmarks
   const analyzeSquat = (landmarks: any[]): SquatAnalysis => {
@@ -115,6 +119,15 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const onResults = (results: any) => {
     if (!canvasRef.current) return;
 
+    // FPS tracking
+    const now = performance.now();
+    if (lastTimeRef.current) {
+      const delta = (now - lastTimeRef.current) / 1000;
+      if (delta > 0) setFps(Math.round(1 / delta));
+    }
+    lastTimeRef.current = now;
+    setPoseReady(true);
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -123,6 +136,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (results.poseLandmarks) {
+      setLandmarkCount(results.poseLandmarks.length || 0);
       // Analyze squat form
       const analysis = analyzeSquat(results.poseLandmarks);
       setSquatAnalysis(analysis);
@@ -246,7 +260,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   }, [videoStream, isActive]);
 
   return (
-    <div className="relative">
+    <div className="absolute inset-0 pointer-events-none">
       <video
         ref={videoRef}
         className="hidden"
@@ -255,11 +269,22 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       />
       <canvas
         ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+        className="absolute inset-0 w-full h-full"
         width={1280}
         height={720}
         style={{ zIndex: 10 }}
       />
+
+      {/* Debug HUD */}
+      <div className="absolute top-2 left-2 bg-coach-surface-elevated/80 text-foreground rounded px-2 py-1 border border-primary/30 shadow-sm">
+        <div className="text-xs font-medium">
+          <span className="mr-2">MediaPipe:</span>
+          <span className={poseReady ? 'text-form-correct' : 'text-muted-foreground'}>
+            {poseReady ? 'Running' : 'Initializing...'}
+          </span>
+        </div>
+        <div className="text-[10px] text-muted-foreground">FPS: {fps} | Landmarks: {landmarkCount}</div>
+      </div>
     </div>
   );
 };
