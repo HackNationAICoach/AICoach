@@ -99,21 +99,32 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       return;
     }
 
+    // Ensure microphone permission before starting the session
     try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      console.error('Microphone permission error:', err);
+      alert('Microphone access is required. Please allow microphone permissions and try again.');
+      return;
+    }
+
+    try {
+      console.log('Starting coaching session...', { usePrivate, agentId: agentId.trim() });
       if (usePrivate) {
         const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
-          body: { agentId },
+          body: { agentId: agentId.trim() },
         });
         if (error) throw new Error(error.message || 'Failed to get signed URL');
         const signedUrl = (data as any)?.signed_url;
         if (!signedUrl) throw new Error('Invalid signed URL response');
         await conversation.startSession({ authorization: signedUrl } as any);
       } else {
-        await conversation.startSession({ agentId });
+        await conversation.startSession({ agentId: agentId.trim() });
       }
     } catch (error) {
       console.error('Failed to start coaching session:', error);
-      alert('Could not start coaching. Check your agent settings.');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Could not start coaching: ${message}`);
     }
   };
 
