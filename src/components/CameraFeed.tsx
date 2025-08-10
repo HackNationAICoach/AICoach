@@ -15,7 +15,9 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
 
   const startCamera = async () => {
     try {
+      setError(null);
       console.log('Requesting camera access...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           width: { ideal: 1280 },
@@ -26,32 +28,26 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
       });
       
       console.log('Camera stream obtained:', stream);
-      console.log('Video tracks:', stream.getVideoTracks());
       
       if (videoRef.current) {
-        console.log('Setting video source...');
         videoRef.current.srcObject = stream;
-        
-        // Immediately set streaming state and call onVideoStream
         setIsStreaming(true);
-        setError(null);
         onVideoStream(stream);
+        console.log('Video stream set, isStreaming set to true');
         
-        // Wait for video to load metadata and start playing
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded');
-          if (videoRef.current) {
-            videoRef.current.play().then(() => {
-              console.log('Video started playing');
-            }).catch(err => {
-              console.error('Error playing video:', err);
-            });
-          }
-        };
+        // Force video to play
+        try {
+          await videoRef.current.play();
+          console.log('Video playing successfully');
+        } catch (playError) {
+          console.log('Auto-play blocked, but stream is set:', playError);
+          // Video will still show even if autoplay is blocked
+        }
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
       setError('Unable to access camera. Please check permissions.');
+      setIsStreaming(false);
       onVideoStream(null);
     }
   };
@@ -83,13 +79,14 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
   return (
     <Card className="relative overflow-hidden bg-coach-surface border-primary/20">
       <div className="aspect-video relative">
-        {isStreaming ? (
+        {isStreaming && videoRef.current?.srcObject ? (
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
             className="w-full h-full object-cover"
+            style={{ transform: 'scaleX(-1)' }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-coach-surface">
