@@ -73,9 +73,13 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
         const summary = snapshot
           ? `Move: ${currentExercise}. ${snapshot.isSquatting ? 'Squatting' : 'Standing'}. Depth ${snapshot.depth}%. Knees ${snapshot.knees}. Back ${snapshot.back}.`
           : `Move: ${currentExercise}. No posture detected yet.`;
+        log('Tool:getPostureSnapshot', snapshot, summary);
         return summary; // tools must return string/number/void
       },
-      getCurrentMove: () => currentExercise,
+      getCurrentMove: () => {
+        log('Tool:getCurrentMove ->', currentExercise);
+        return currentExercise;
+      },
     },
     onConnect: () => {
       log('AI Coach connected');
