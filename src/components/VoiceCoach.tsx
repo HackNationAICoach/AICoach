@@ -179,6 +179,17 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       setLastError(null);
       log('Starting coaching session...', { usePrivate, agentId: agentId.trim() });
       if (usePrivate) {
+        // Validate agent with the same XI_API_KEY workspace first
+        const vres = await supabase.functions.invoke('eleven-signed-url', {
+          body: { agentId: agentId.trim(), validate: true },
+        });
+        const vdata: any = vres.data;
+        if (vdata && vdata.valid === false) {
+          log('Agent validation failed', vdata);
+          alert(`Agent validation failed: ${vdata.status} ${vdata.message || ''}`);
+          return;
+        }
+
         const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
           body: { agentId: agentId.trim() },
         });

@@ -1,6 +1,7 @@
 // Supabase Edge Function: eleven-signed-url
 // Deno runtime
 // This function returns a signed URL for a private ElevenLabs Conversational AI agent
+// and can also validate whether an agent exists in the current workspace.
 // Requires Supabase secret: XI_API_KEY
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -17,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { agentId } = await req.json();
+    const { agentId, validate } = await req.json();
     if (!agentId) {
       return new Response(JSON.stringify({ error: "Missing agentId" }), {
         status: 400,
@@ -36,6 +37,25 @@ serve(async (req) => {
     const headers = new Headers();
     headers.set("xi-api-key", XI_API_KEY);
 
+    // Optional: validate agent existence in this workspace
+    if (validate) {
+      const validateUrl = `https://api.elevenlabs.io/v1/convai/agents/${encodeURIComponent(agentId)}`;
+      const vresp = await fetch(validateUrl, { method: "GET", headers });
+      if (!vresp.ok) {
+        const text = await vresp.text();
+        return new Response(
+          JSON.stringify({ valid: false, status: vresp.status, message: text }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+      const agent = await vresp.json();
+      return new Response(
+        JSON.stringify({ valid: true, agent: { id: agent?.agent_id || agentId, name: agent?.name, visibility: agent?.visibility } }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    // Default: create signed URL for websocket session
     const url = `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${encodeURIComponent(agentId)}`;
     const resp = await fetch(url, { method: "GET", headers });
 
