@@ -350,6 +350,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         ref={videoRef}
         className="absolute pointer-events-none opacity-0 w-px h-px -z-10"
         playsInline
+        autoPlay
         muted
         aria-hidden="true"
       />
@@ -376,7 +377,10 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         {poseError ? (
           <div className="text-[10px] text-destructive/80 max-w-[280px]">{poseError}</div>
         ) : (
-          <div className="text-[10px] text-muted-foreground">FPS: {fps} | Landmarks: {landmarkCount}</div>
+          <>
+            <div className="text-[10px] text-muted-foreground">FPS: {fps} | Landmarks: {landmarkCount} | Sends: {sends} | Results: {resultsCount}</div>
+            <div className="text-[10px] text-muted-foreground">Video: {videoDims.w}x{videoDims.h} rs:{videoRef.current?.readyState ?? 0}</div>
+          </>
         )}
       </div>
     </div>
