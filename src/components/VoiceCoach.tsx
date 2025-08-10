@@ -257,6 +257,11 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     }
   }, [status, connectAttemptAt, usePrivate, fallbackTried]);
 
+  // Status change logging
+  useEffect(() => {
+    log('Status:', status);
+  }, [status]);
+
   // Provide contextual feedback based on squat analysis
   useEffect(() => {
     if (!squatAnalysis || !isActive || status !== 'connected') return;
