@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import * as mpPose from '@mediapipe/pose';
+
 
 
 
@@ -39,7 +39,29 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const [videoDims, setVideoDims] = useState<{w:number;h:number}>({ w: 0, h: 0 });
   const lastTimeRef = useRef<number>(0);
 
-  // Using bundled @mediapipe/pose import; no dynamic script loading
+  // Lazy-load global MediaPipe Pose from CDN if not present
+  const ensurePoseLoaded = async () => {
+    const w = window as any;
+    if (w && typeof w.Pose === 'function') return;
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => resolve();
+      script.onerror = () => {
+        const fallback = document.createElement('script');
+        fallback.src = 'https://unpkg.com/@mediapipe/pose@0.5.1675469404/pose.js';
+        fallback.async = true;
+        fallback.crossOrigin = 'anonymous';
+        fallback.onload = () => resolve();
+        fallback.onerror = () => reject(new Error('Failed to load MediaPipe Pose script'));
+        document.head.appendChild(fallback);
+      };
+      document.head.appendChild(script);
+    });
+    if (!(window as any).Pose) throw new Error('MediaPipe Pose not available on window after load');
+  };
   const analyzeSquat = (landmarks: any[]): SquatAnalysis => {
     if (!landmarks || landmarks.length === 0) {
       return {
@@ -207,15 +229,15 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (poseRef.current) return;
 
       try {
-        const PoseNS: any = mpPose as any;
-        const PoseCtor = PoseNS?.Pose || PoseNS?.default?.Pose || PoseNS?.default || PoseNS;
+        await ensurePoseLoaded();
+        const PoseCtor = (window as any).Pose;
         if (typeof PoseCtor !== 'function') {
-          throw new Error('MediaPipe Pose constructor not found');
+          throw new Error('MediaPipe Pose constructor not found (global)');
         }
         poseRef.current = new PoseCtor({
           locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
         });
-        console.log('[PoseDetection] Pose instance created (namespace import), assets from jsDelivr (pinned)');
+        console.log('[PoseDetection] Pose instance created (global from CDN), assets from jsDelivr (pinned)');
 
         poseRef.current.setOptions({
           modelComplexity: 1,
