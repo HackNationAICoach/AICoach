@@ -46,7 +46,7 @@ const Index = () => {
 
   const handleQuickStart = () => {
     setShowGetStarted(false);
-    setIsSessionActive(true);
+    handleSessionStart(); // Use the session start handler to properly set up timing
   };
 
   return (

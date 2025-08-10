@@ -30,20 +30,18 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
       console.log('Camera stream obtained:', stream);
       
       if (videoRef.current) {
+        console.log('Setting video source...');
         videoRef.current.srcObject = stream;
-        console.log('Video stream set, stream tracks:', stream.getVideoTracks().length);
         
-        // Wait for the video to load before setting streaming
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, setting streaming to true');
-          setIsStreaming(true);
-          onVideoStream(stream);
-          
-          // Force video to play
-          videoRef.current?.play().catch(playError => {
-            console.log('Auto-play blocked, but stream is set:', playError);
-          });
-        };
+        // Set streaming immediately and call onVideoStream
+        setIsStreaming(true);
+        onVideoStream(stream);
+        console.log('Video stream set, streaming state set to true');
+        
+        // Try to play the video
+        videoRef.current.play().catch(playError => {
+          console.log('Auto-play blocked, but stream is set:', playError);
+        });
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
