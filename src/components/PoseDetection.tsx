@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Pose } from '@mediapipe/pose';
+import * as mpPose from '@mediapipe/pose';
 
 
 
@@ -207,10 +207,15 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (poseRef.current) return;
 
       try {
-        poseRef.current = new Pose({
+        const PoseNS: any = mpPose as any;
+        const PoseCtor = PoseNS?.Pose || PoseNS?.default?.Pose || PoseNS?.default || PoseNS;
+        if (typeof PoseCtor !== 'function') {
+          throw new Error('MediaPipe Pose constructor not found');
+        }
+        poseRef.current = new PoseCtor({
           locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
         });
-        console.log('[PoseDetection] Pose instance created (bundled import), assets from jsDelivr (pinned)');
+        console.log('[PoseDetection] Pose instance created (namespace import), assets from jsDelivr (pinned)');
 
         poseRef.current.setOptions({
           modelComplexity: 1,
