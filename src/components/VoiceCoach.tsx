@@ -29,6 +29,30 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const [lastError, setLastError] = useState<string | null>(null);
   const [connectAttemptAt, setConnectAttemptAt] = useState<number>(0);
   const [fallbackTried, setFallbackTried] = useState(false);
+  const [debugMode, setDebugMode] = useState(() => localStorage.getItem('coach_debug') === 'true');
+  const [logs, setLogs] = useState<string[]>([]);
+
+  const log = (...args: any[]) => {
+    console.log('[VoiceCoach]', ...args);
+    if (!debugMode) return;
+    const msg = args
+      .map((a: any) => (typeof a === 'string' ? a : (() => { try { return JSON.stringify(a); } catch { return String(a); } })()))
+      .join(' ');
+    setLogs((prev) => [...prev.slice(-99), `${new Date().toISOString()} ${msg}`]);
+  };
+
+  const redactUrl = (u?: string) => {
+    if (!u) return u;
+    try {
+      const url = new URL(u);
+      if (url.searchParams.has('conversation_signature')) {
+        url.searchParams.set('conversation_signature', '***');
+      }
+      return url.toString();
+    } catch {
+      return u;
+    }
+  };
 
   const conversation = useConversation({
     clientTools: {
@@ -49,17 +73,17 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       getCurrentMove: () => currentExercise,
     },
     onConnect: () => {
-      console.log('AI Coach connected');
+      log('AI Coach connected');
       onCoachingStart();
     },
     onDisconnect: () => {
-      console.log('AI Coach disconnected');
+      log('AI Coach disconnected');
       onCoachingStop();
       const justAttempted = !!connectAttemptAt && Date.now() - connectAttemptAt < 5000;
 
       // Auto-fallback: if public agent drops instantly, try private signed URL once
       if (!usePrivate && justAttempted && !fallbackTried) {
-        console.log('Attempting private signed-URL fallback after quick disconnect');
+        log('Attempting private signed-URL fallback after quick disconnect');
         setFallbackTried(true);
         (async () => {
           try {
@@ -87,7 +111,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       }
     },
     onMessage: (message) => {
-      console.log('Coach message:', message);
+      log('Coach message:', message);
     },
     onError: (error) => {
       console.error('Coach error:', error);
@@ -130,6 +154,9 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   useEffect(() => {
     localStorage.setItem('eleven_private', String(usePrivate));
   }, [usePrivate]);
+  useEffect(() => {
+    localStorage.setItem('coach_debug', String(debugMode));
+  }, [debugMode]);
 
   const startCoaching = async () => {
     if (!agentId) {
@@ -149,17 +176,20 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     try {
       setConnectAttemptAt(Date.now());
       setLastError(null);
-      console.log('Starting coaching session...', { usePrivate, agentId: agentId.trim() });
+      log('Starting coaching session...', { usePrivate, agentId: agentId.trim() });
       if (usePrivate) {
         const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
           body: { agentId: agentId.trim() },
         });
         if (error) throw new Error(error.message || 'Failed to get signed URL');
         const signedUrl = (data as any)?.signed_url;
+        log('Edge function returned signed URL', redactUrl(signedUrl));
         if (!signedUrl) throw new Error('Invalid signed URL response');
-        await conversation.startSession({ url: signedUrl } as any);
+        const convId = await conversation.startSession({ url: signedUrl } as any);
+        log('Coach session started (private)', { convId });
       } else {
-        await conversation.startSession({ agentId: agentId.trim() });
+        const convId = await conversation.startSession({ agentId: agentId.trim() });
+        log('Coach session started (public)', { convId });
       }
     } catch (error) {
       console.error('Failed to start coaching session:', error);
@@ -254,6 +284,14 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
           <p className="text-xs text-muted-foreground">
             Private mode mints a signed URL from a Supabase Edge Function using your ElevenLabs API key stored as a Supabase secret.
           </p>
+          <label className="flex items-center justify-between text-sm text-foreground">
+            <span>Enable debug logs</span>
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => setDebugMode(e.target.checked)}
+            />
+          </label>
         </div>
 
         {/* Controls */}
@@ -363,6 +401,24 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {debugMode && (
+          <div className="space-y-2">
+            <h4 className="font-medium text-foreground">Debug Logs</h4>
+            <div className="p-3 bg-muted rounded-md max-h-40 overflow-auto">
+              {logs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No logs yet</p>
+              ) : (
+                logs.slice(-80).map((l, i) => (
+                  <div key={i} className="text-[10px] font-mono text-muted-foreground">{l}</div>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(logs.join('\n'))}>Copy</Button>
+            </div>
           </div>
         )}
       </div>
