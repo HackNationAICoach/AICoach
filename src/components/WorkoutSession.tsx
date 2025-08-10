@@ -46,29 +46,38 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({
 
   // Timer effect
   useEffect(() => {
+    console.log('Timer effect - isActive:', isActive, 'sessionStartTime:', sessionStartTime);
     let interval: NodeJS.Timeout;
     
     if (isActive && sessionStartTime) {
+      console.log('Starting timer interval');
       interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+        console.log('Timer tick - elapsed seconds:', elapsed);
         setSessionStats(prev => ({
           ...prev,
-          duration: Math.floor((Date.now() - sessionStartTime) / 1000)
+          duration: elapsed
         }));
       }, 1000);
     }
 
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        console.log('Clearing timer interval');
+        clearInterval(interval);
+      }
     };
   }, [isActive, sessionStartTime]);
 
   const handleSessionToggle = () => {
+    console.log('Session toggle called, isActive:', isActive);
     if (isActive) {
       onSessionEnd();
       setSessionStartTime(null);
     } else {
-      onSessionStart();
-      setSessionStartTime(Date.now());
+      const now = Date.now();
+      console.log('Starting session at:', now);
+      setSessionStartTime(now);
       setSessionStats({
         duration: 0,
         squatsCompleted: 0,
@@ -76,6 +85,7 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({
         currentStreak: 0,
         bestStreak: 0
       });
+      onSessionStart();
     }
   };
 

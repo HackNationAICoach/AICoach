@@ -28,6 +28,7 @@ const Index = () => {
   };
 
   const handleSessionStart = () => {
+    console.log('Session starting...');
     setIsSessionActive(true);
     setShowGetStarted(false);
   };
