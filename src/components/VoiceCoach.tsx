@@ -37,8 +37,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     return stored === null ? false : stored === 'true';
   });
   const [lastToolCallAt, setLastToolCallAt] = useState<number>(0);
-  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(() => localStorage.getItem('coach_tts_fallback') === 'true');
-  const [lastLocalSpeakAt, setLastLocalSpeakAt] = useState<number>(0);
+  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(false);
 
   const log = (...args: any[]) => {
     console.log('[VoiceCoach]', ...args);
@@ -173,10 +172,6 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   useEffect(() => {
     localStorage.setItem('coach_safe_mode', String(safeMode));
   }, [safeMode]);
-  useEffect(() => {
-    localStorage.setItem('coach_tts_fallback', String(ttsFallbackEnabled));
-  }, [ttsFallbackEnabled]);
-
   const startCoaching = async () => {
     if (!agentId) {
       alert('Please configure your ElevenLabs Agent ID first');
@@ -283,22 +278,6 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     }
   };
 
-  const speakLocal = (text: string) => {
-    try {
-      if (typeof window === 'undefined' || !(window as any).speechSynthesis) return;
-      const synth: SpeechSynthesis = (window as any).speechSynthesis;
-      if (synth.speaking) return; // avoid overlap
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 1;
-      utter.pitch = 1;
-      utter.volume = Math.max(0, Math.min(1, volume));
-      synth.cancel();
-      synth.speak(utter);
-    } catch (e) {
-      console.warn('Local TTS failed', e);
-    }
-  };
-
   const validateAgent = async () => {
     try {
       log('Validating agent via edge function');
@@ -349,29 +328,6 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       setLastFeedbackTime(now);
     }
   }, [squatAnalysis, isActive, status, lastFeedbackTime]);
-
-  // Local TTS fallback: speak concise cues when the coach is silent or disconnected
-  useEffect(() => {
-    if (!ttsFallbackEnabled) return;
-    if (!squatAnalysis || !isActive) return;
-
-    const now = Date.now();
-    const recentlyTool = lastToolCallAt && now - lastToolCallAt < 4000;
-    const recentlySpoken = lastLocalSpeakAt && now - lastLocalSpeakAt < 3000;
-    const coachSilent = status !== 'connected' || !recentlyTool;
-
-    if (recentlySpoken || !coachSilent) return;
-    if (!squatAnalysis.isSquatting) return;
-
-    let cue = '';
-    if (squatAnalysis.kneeAlignment !== 'good') cue = 'Keep knees tracking over toes.';
-    else if (squatAnalysis.backAlignment !== 'good') cue = 'Keep your chest up and back neutral.';
-    else if (squatAnalysis.depth < 60) cue = 'Go a bit deeper while keeping control.';
-    else cue = 'Nice rep.';
-
-    speakLocal(cue);
-    setLastLocalSpeakAt(now);
-  }, [ttsFallbackEnabled, squatAnalysis, isActive, status, lastToolCallAt, lastLocalSpeakAt, volume]);
 
   return (
     <Card className="p-6 bg-coach-surface-elevated border-primary/20">
