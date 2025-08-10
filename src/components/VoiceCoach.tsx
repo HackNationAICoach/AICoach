@@ -203,6 +203,10 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     try {
       setFallbackTried(true);
       log('Fallback: requesting signed URL');
+      // Ensure any previous session is fully closed and mic is available
+      try { await conversation.endSession(); } catch {}
+      try { await navigator.mediaDevices.getUserMedia({ audio: true }); } catch {}
+
       const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
         body: { agentId: agentId.trim() },
       });
@@ -210,9 +214,15 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       const signedUrl = (data as any)?.signed_url;
       log('Fallback signed URL', redactUrl(signedUrl));
       if (!signedUrl) throw new Error('Invalid signed URL response');
-      const convId = await conversation.startSession({ url: signedUrl } as any);
-      log('Fallback connected', { convId });
-      alert('Switched to private connection automatically.');
+
+      // Add a timeout so we surface errors if the connect hangs
+      const connectPromise = (async () => {
+        const convId = await conversation.startSession({ url: signedUrl } as any);
+        log('Fallback connected', { convId });
+        alert('Switched to private connection automatically.');
+      })();
+      const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Fallback connect timeout (5s)')), 5000));
+      await Promise.race([connectPromise, timeoutPromise]);
     } catch (e) {
       console.error('Fallback connection failed:', e);
       const msg = (e as any)?.message || JSON.stringify(e) || 'Unknown error';
