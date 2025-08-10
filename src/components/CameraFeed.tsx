@@ -79,7 +79,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
   return (
     <Card className="relative overflow-hidden bg-coach-surface border-primary/20">
       <div className="aspect-video relative">
-        {isStreaming && videoRef.current?.srcObject ? (
+        {isStreaming ? (
           <video
             ref={videoRef}
             autoPlay
