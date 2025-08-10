@@ -117,7 +117,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
         if (error) throw new Error(error.message || 'Failed to get signed URL');
         const signedUrl = (data as any)?.signed_url;
         if (!signedUrl) throw new Error('Invalid signed URL response');
-        await conversation.startSession({ authorization: signedUrl } as any);
+        await conversation.startSession({ url: signedUrl } as any);
       } else {
         await conversation.startSession({ agentId: agentId.trim() });
       }
