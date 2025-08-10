@@ -31,6 +31,9 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const [fps, setFps] = useState(0);
   const [landmarkCount, setLandmarkCount] = useState(0);
   const [poseError, setPoseError] = useState<string | null>(null);
+  const [sends, setSends] = useState(0);
+  const [resultsCount, setResultsCount] = useState(0);
+  const [videoDims, setVideoDims] = useState<{w:number;h:number}>({ w: 0, h: 0 });
   const lastTimeRef = useRef<number>(0);
 
   // Analyze squat form from pose landmarks
@@ -128,6 +131,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     }
     lastTimeRef.current = now;
     setPoseReady(true);
+    setResultsCount((c) => c + 1);
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -199,21 +203,26 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     const initializePose = async () => {
       if (poseRef.current) return;
 
-      poseRef.current = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
-      });
-      console.log('[PoseDetection] Pose instance created, loading assets from jsDelivr (pinned)');
+      try {
+        poseRef.current = new Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
+        });
+        console.log('[PoseDetection] Pose instance created, loading assets from jsDelivr (pinned)');
 
-      poseRef.current.setOptions({
-        modelComplexity: 1,
-        smoothLandmarks: true,
-        enableSegmentation: false,
-        smoothSegmentation: false,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
+        poseRef.current.setOptions({
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          smoothSegmentation: false,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
 
-      poseRef.current.onResults(onResults);
+        poseRef.current.onResults(onResults);
+      } catch (err: any) {
+        console.error('[PoseDetection] initialization error', err);
+        setPoseError(err?.message || String(err));
+      }
     };
 
     initializePose();
@@ -240,7 +249,20 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         if (!active) return;
         if (poseRef.current) {
           try {
-            await poseRef.current.send({ image: video });
+            // ensure video dimensions available
+            const vw = (video as HTMLVideoElement).videoWidth || 0;
+            const vh = (video as HTMLVideoElement).videoHeight || 0;
+            if (vw > 0 && vh > 0) {
+              if (canvasRef.current) {
+                if (canvasRef.current.width !== vw || canvasRef.current.height !== vh) {
+                  canvasRef.current.width = vw;
+                  canvasRef.current.height = vh;
+                  setVideoDims({ w: vw, h: vh });
+                }
+              }
+              await poseRef.current.send({ image: video });
+              setSends((s) => s + 1);
+            }
           } catch (err: any) {
             console.error('[PoseDetection] send() error', err);
             setPoseError(err?.message || String(err));
