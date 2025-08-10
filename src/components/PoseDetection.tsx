@@ -232,6 +232,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     video.srcObject = videoStream;
     
     const startCamera = () => {
+      console.log('PoseDetection: starting MediaPipe camera');
       if (cameraRef.current) {
         cameraRef.current.stop();
       }
@@ -249,7 +250,13 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       cameraRef.current.start();
     };
 
-    video.addEventListener('loadedmetadata', startCamera);
+    // Ensure playback and start even if metadata already loaded
+    try { video.play(); } catch (e) { /* ignore */ }
+    if (video.readyState >= 1) {
+      startCamera();
+    } else {
+      video.addEventListener('loadedmetadata', startCamera, { once: true });
+    }
 
     return () => {
       if (cameraRef.current) {
