@@ -36,6 +36,9 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     const stored = localStorage.getItem('coach_safe_mode');
     return stored === null ? false : stored === 'true';
   });
+  const [lastToolCallAt, setLastToolCallAt] = useState<number>(0);
+  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(() => localStorage.getItem('coach_tts_fallback') !== 'false');
+  const [lastLocalSpeakAt, setLastLocalSpeakAt] = useState<number>(0);
 
   const log = (...args: any[]) => {
     console.log('[VoiceCoach]', ...args);
@@ -62,6 +65,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const conversation = useConversation({
     clientTools: {
       getPostureSnapshot: () => {
+        setLastToolCallAt(Date.now());
         const snapshot = squatAnalysis
           ? {
               isSquatting: squatAnalysis.isSquatting,
@@ -77,6 +81,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
         return summary; // tools must return string/number/void
       },
       getCurrentMove: () => {
+        setLastToolCallAt(Date.now());
         log('Tool:getCurrentMove ->', currentExercise);
         return currentExercise;
       },
@@ -168,6 +173,9 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   useEffect(() => {
     localStorage.setItem('coach_safe_mode', String(safeMode));
   }, [safeMode]);
+  useEffect(() => {
+    localStorage.setItem('coach_tts_fallback', String(ttsFallbackEnabled));
+  }, [ttsFallbackEnabled]);
 
   const startCoaching = async () => {
     if (!agentId) {
@@ -218,6 +226,11 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       const raw: any = error;
       const message = (raw && (raw.message || raw.reason || raw.code)) || JSON.stringify(raw) || 'Unknown error';
       alert(`Could not start coaching: ${message}`);
+      if (!safeMode) {
+        log('Start failed with overrides; enabling Safe mode (no overrides)');
+        setSafeMode(true);
+        alert('Safe mode enabled (disables overrides). Try Start again.');
+      }
     }
   };
 
@@ -267,6 +280,22 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       await conversation.setVolume({ volume: newVolume });
     } catch (error) {
       console.error('Failed to adjust volume:', error);
+    }
+  };
+
+  const speakLocal = (text: string) => {
+    try {
+      if (typeof window === 'undefined' || !(window as any).speechSynthesis) return;
+      const synth: SpeechSynthesis = (window as any).speechSynthesis;
+      if (synth.speaking) return; // avoid overlap
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1;
+      utter.pitch = 1;
+      utter.volume = Math.max(0, Math.min(1, volume));
+      synth.cancel();
+      synth.speak(utter);
+    } catch (e) {
+      console.warn('Local TTS failed', e);
     }
   };
 
@@ -320,6 +349,29 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       setLastFeedbackTime(now);
     }
   }, [squatAnalysis, isActive, status, lastFeedbackTime]);
+
+  // Local TTS fallback: speak concise cues when the coach is silent or disconnected
+  useEffect(() => {
+    if (!ttsFallbackEnabled) return;
+    if (!squatAnalysis || !isActive) return;
+
+    const now = Date.now();
+    const recentlyTool = lastToolCallAt && now - lastToolCallAt < 4000;
+    const recentlySpoken = lastLocalSpeakAt && now - lastLocalSpeakAt < 3000;
+    const coachSilent = status !== 'connected' || !recentlyTool;
+
+    if (recentlySpoken || !coachSilent) return;
+    if (!squatAnalysis.isSquatting) return;
+
+    let cue = '';
+    if (squatAnalysis.kneeAlignment !== 'good') cue = 'Keep knees tracking over toes.';
+    else if (squatAnalysis.backAlignment !== 'good') cue = 'Keep your chest up and back neutral.';
+    else if (squatAnalysis.depth < 60) cue = 'Go a bit deeper while keeping control.';
+    else cue = 'Nice rep.';
+
+    speakLocal(cue);
+    setLastLocalSpeakAt(now);
+  }, [ttsFallbackEnabled, squatAnalysis, isActive, status, lastToolCallAt, lastLocalSpeakAt, volume]);
 
   return (
     <Card className="p-6 bg-coach-surface-elevated border-primary/20">
@@ -387,6 +439,14 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
               type="checkbox"
               checked={safeMode}
               onChange={(e) => setSafeMode(e.target.checked)}
+            />
+          </label>
+          <label className="flex items-center justify-between text-sm text-foreground">
+            <span>Local TTS fallback when coach is silent</span>
+            <input
+              type="checkbox"
+              checked={ttsFallbackEnabled}
+              onChange={(e) => setTtsFallbackEnabled(e.target.checked)}
             />
           </label>
           <div className="flex gap-2 pt-2">
