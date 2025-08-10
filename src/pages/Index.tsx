@@ -16,8 +16,9 @@ const Index = () => {
   const [currentExercise, setCurrentExercise] = useState('squats');
   const [squatAnalysis, setSquatAnalysis] = useState<SquatAnalysis | null>(null);
   const [showGetStarted, setShowGetStarted] = useState(true);
+  const [cameraEl, setCameraEl] = useState<HTMLVideoElement | null>(null);
 
-  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  
 
   const handleVideoStream = (stream: MediaStream | null) => {
     setVideoStream(stream);
@@ -135,9 +136,9 @@ const Index = () => {
             {/* Camera Feed */}
             <div className="relative">
               <CameraFeed
-                ref={cameraVideoRef}
                 onVideoStream={handleVideoStream}
                 isActive={isSessionActive}
+                onVideoElementReady={setCameraEl}
               />
               
               {/* Pose Detection Overlay */}
@@ -147,7 +148,7 @@ const Index = () => {
                     videoStream={videoStream}
                     onPoseResults={handlePoseResults}
                     isActive={isSessionActive}
-                    sourceVideo={cameraVideoRef.current}
+                    sourceVideo={cameraEl}
                   />
                 </div>
               )}

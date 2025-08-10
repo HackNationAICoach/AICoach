@@ -6,9 +6,10 @@ import { Camera, CameraOff } from 'lucide-react';
 interface CameraFeedProps {
   onVideoStream: (stream: MediaStream | null) => void;
   isActive: boolean;
+  onVideoElementReady?: (el: HTMLVideoElement | null) => void;
 }
 
-export const CameraFeed = React.forwardRef<HTMLVideoElement, CameraFeedProps>(({ onVideoStream, isActive }, forwardedRef) => {
+export const CameraFeed = React.forwardRef<HTMLVideoElement, CameraFeedProps>(({ onVideoStream, isActive, onVideoElementReady }, forwardedRef) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -71,6 +72,7 @@ export const CameraFeed = React.forwardRef<HTMLVideoElement, CameraFeedProps>(({
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+      onVideoElementReady?.(null);
     }
     streamRef.current = null;
     setIsStreaming(false);
@@ -98,6 +100,7 @@ export const CameraFeed = React.forwardRef<HTMLVideoElement, CameraFeedProps>(({
         <video
           ref={(node) => {
             videoRef.current = node;
+            onVideoElementReady?.(node);
             if (typeof forwardedRef === 'function') {
               forwardedRef(node);
             } else if (forwardedRef && 'current' in (forwardedRef as any)) {
