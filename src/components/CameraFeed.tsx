@@ -17,36 +17,39 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
     try {
       setError(null);
       console.log('Requesting camera access...');
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          facingMode: 'user'
+          facingMode: 'user',
         },
-        audio: false
+        audio: false,
       });
-      
+
       console.log('Camera stream obtained:', stream);
-      
+
       if (videoRef.current) {
         console.log('Setting video source...');
         videoRef.current.srcObject = stream;
-        
-        // Wait for the video to actually load before setting state
+
+        // Ensure the video is ready before marking streaming true
         videoRef.current.onloadedmetadata = () => {
           console.log('Video metadata loaded, video ready');
           setIsStreaming(true);
           onVideoStream(stream);
-          
-          // Force play
-          if (videoRef.current) {
-            videoRef.current.play().catch(err => console.log('Autoplay prevented:', err));
-          }
+
+          videoRef.current?.play().catch((err) => {
+            console.log('Autoplay prevented:', err);
+          });
         };
-        
-        // Also try to play immediately in case metadata is already loaded
-        videoRef.current.play().catch(err => console.log('Initial play prevented:', err));
+
+        // Try to play immediately as well (some browsers already have metadata)
+        videoRef.current.play().catch((err) => {
+          console.log('Initial play prevented:', err);
+        });
+      } else {
+        console.log('Video element not yet mounted; will set on mount');
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
@@ -59,11 +62,11 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
   const stopCamera = () => {
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
-      setIsStreaming(false);
-      onVideoStream(null);
     }
+    setIsStreaming(false);
+    onVideoStream(null);
   };
 
   useEffect(() => {
@@ -83,17 +86,19 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
   return (
     <Card className="relative overflow-hidden bg-coach-surface border-primary/20">
       <div className="aspect-video relative">
-        {isStreaming ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-            style={{ transform: 'scaleX(-1)' }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-coach-surface">
+        {/* Always render the video so the ref exists when starting the camera */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+          style={{ transform: 'scaleX(-1)' }}
+        />
+
+        {/* Overlay when not streaming or on error */}
+        {!isStreaming && (
+          <div className="absolute inset-0 flex items-center justify-center bg-coach-surface">
             <div className="text-center space-y-4">
               {error ? (
                 <>
@@ -112,18 +117,18 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
             </div>
           </div>
         )}
-        
-        {/* Overlay for pose landmarks will be added here */}
-        <canvas 
+
+        {/* Overlay for pose landmarks */}
+        <canvas
           className="absolute top-0 left-0 w-full h-full pointer-events-none"
           style={{ zIndex: 10 }}
         />
       </div>
-      
+
       {/* Camera controls */}
       <div className="absolute bottom-4 right-4 flex gap-2">
         <Button
-          variant={isStreaming ? "destructive" : "energy"}
+          variant={isStreaming ? 'destructive' : 'energy'}
           size="sm"
           onClick={isStreaming ? stopCamera : startCamera}
         >

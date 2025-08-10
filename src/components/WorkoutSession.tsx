@@ -44,6 +44,22 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({
   });
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
 
+  // Start when activated externally (e.g., Quick Start)
+  useEffect(() => {
+    if (isActive && !sessionStartTime) {
+      const now = Date.now();
+      console.log('External activation detected. Starting session at:', now);
+      setSessionStartTime(now);
+      setSessionStats({
+        duration: 0,
+        squatsCompleted: 0,
+        goodFormReps: 0,
+        currentStreak: 0,
+        bestStreak: 0
+      });
+    }
+  }, [isActive]);
+
   // Timer effect
   useEffect(() => {
     console.log('Timer effect - isActive:', isActive, 'sessionStartTime:', sessionStartTime);
