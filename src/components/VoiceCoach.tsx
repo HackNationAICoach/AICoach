@@ -158,6 +158,9 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   useEffect(() => {
     localStorage.setItem('coach_debug', String(debugMode));
   }, [debugMode]);
+  useEffect(() => {
+    localStorage.setItem('coach_safe_mode', String(safeMode));
+  }, [safeMode]);
 
   const startCoaching = async () => {
     if (!agentId) {
@@ -260,7 +263,27 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     }
   };
 
-  // Auto-fallback watcher for quick public disconnects
+  const validateAgent = async () => {
+    try {
+      log('Validating agent via edge function');
+      const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
+        body: { agentId: agentId.trim(), validate: true },
+      });
+      if (error) throw new Error(error.message || 'Validation request failed');
+      const res: any = data;
+      log('Validation response', res);
+      if (res?.valid === false) {
+        alert(`Validation: NOT FOUND in this workspace (${res.status}). Details: ${res.message || 'n/a'}`);
+      } else if (res?.valid === true) {
+        alert(`Validation: OK — ${res.agent?.name || 'agent'} (${res.agent?.id})`);
+      } else {
+        alert('Validation returned unexpected response');
+      }
+    } catch (e) {
+      const msg = (e as any)?.message || JSON.stringify(e) || 'Unknown error';
+      alert(`Validation failed: ${msg}`);
+    }
+  };
   useEffect(() => {
     const justAttempted = !!connectAttemptAt && Date.now() - connectAttemptAt < 5000;
     if (status === 'disconnected' && !usePrivate && !fallbackTried && justAttempted) {
@@ -351,6 +374,17 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
               onChange={(e) => setDebugMode(e.target.checked)}
             />
           </label>
+          <label className="flex items-center justify-between text-sm text-foreground">
+            <span>Safe mode (disable overrides)</span>
+            <input
+              type="checkbox"
+              checked={safeMode}
+              onChange={(e) => setSafeMode(e.target.checked)}
+            />
+          </label>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={validateAgent}>Validate Agent</Button>
+          </div>
         </div>
 
         {/* Controls */}
