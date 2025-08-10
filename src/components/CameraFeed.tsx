@@ -10,6 +10,7 @@ interface CameraFeedProps {
 
 export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,8 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
       });
 
       console.log('Camera stream obtained:', stream);
+
+      streamRef.current = stream;
 
       if (videoRef.current) {
         console.log('Setting video source...');
@@ -60,19 +63,24 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoStream, isActive 
   };
 
   const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
+    const stream = (videoRef.current?.srcObject as MediaStream | null) || streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch {}
+      });
+    }
+    if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    streamRef.current = null;
     setIsStreaming(false);
     onVideoStream(null);
   };
 
   useEffect(() => {
-    if (isActive && !isStreaming) {
+    if (isActive) {
       startCamera();
-    } else if (!isActive && isStreaming) {
+    } else {
       stopCamera();
     }
   }, [isActive]);
