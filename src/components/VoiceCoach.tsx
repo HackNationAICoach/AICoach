@@ -198,6 +198,29 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       alert(`Could not start coaching: ${message}`);
     }
   };
+
+  const tryPrivateFallback = async () => {
+    try {
+      setFallbackTried(true);
+      log('Fallback: requesting signed URL');
+      const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
+        body: { agentId: agentId.trim() },
+      });
+      if (error) throw new Error(error.message || 'Failed to get signed URL');
+      const signedUrl = (data as any)?.signed_url;
+      log('Fallback signed URL', redactUrl(signedUrl));
+      if (!signedUrl) throw new Error('Invalid signed URL response');
+      const convId = await conversation.startSession({ url: signedUrl } as any);
+      log('Fallback connected', { convId });
+      alert('Switched to private connection automatically.');
+    } catch (e) {
+      console.error('Fallback connection failed:', e);
+      const msg = (e as any)?.message || JSON.stringify(e) || 'Unknown error';
+      setLastError(typeof msg === 'string' ? msg : 'Unknown error');
+      alert(`Coach disconnected and fallback failed: ${msg}`);
+    }
+  };
+
   const stopCoaching = async () => {
     try {
       await conversation.endSession();
@@ -214,6 +237,15 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       console.error('Failed to adjust volume:', error);
     }
   };
+
+  // Auto-fallback watcher for quick public disconnects
+  useEffect(() => {
+    const justAttempted = !!connectAttemptAt && Date.now() - connectAttemptAt < 5000;
+    if (status === 'disconnected' && !usePrivate && !fallbackTried && justAttempted) {
+      log('Status watcher triggering private fallback');
+      tryPrivateFallback();
+    }
+  }, [status, connectAttemptAt, usePrivate, fallbackTried]);
 
   // Provide contextual feedback based on squat analysis
   useEffect(() => {
