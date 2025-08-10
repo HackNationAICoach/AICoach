@@ -30,6 +30,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const [poseReady, setPoseReady] = useState(false);
   const [fps, setFps] = useState(0);
   const [landmarkCount, setLandmarkCount] = useState(0);
+  const [poseError, setPoseError] = useState<string | null>(null);
   const lastTimeRef = useRef<number>(0);
 
   // Analyze squat form from pose landmarks
@@ -199,8 +200,9 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (poseRef.current) return;
 
       poseRef.current = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
       });
+      console.log('[PoseDetection] Pose instance created, loading assets from jsDelivr (pinned)');
 
       poseRef.current.setOptions({
         modelComplexity: 1,
@@ -237,7 +239,12 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       const render = async () => {
         if (!active) return;
         if (poseRef.current) {
-          await poseRef.current.send({ image: video });
+          try {
+            await poseRef.current.send({ image: video });
+          } catch (err: any) {
+            console.error('[PoseDetection] send() error', err);
+            setPoseError(err?.message || String(err));
+          }
         }
         rafRef.current = requestAnimationFrame(render);
       };
@@ -289,11 +296,19 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       <div className="absolute top-2 left-2 bg-coach-surface-elevated/80 text-foreground rounded px-2 py-1 border border-primary/30 shadow-sm">
         <div className="text-xs font-medium">
           <span className="mr-2">MediaPipe:</span>
-          <span className={poseReady ? 'text-form-correct' : 'text-muted-foreground'}>
-            {poseReady ? 'Running' : 'Initializing...'}
-          </span>
+          {poseError ? (
+            <span className="text-destructive">Error</span>
+          ) : (
+            <span className={poseReady ? 'text-form-correct' : 'text-muted-foreground'}>
+              {poseReady ? 'Running' : 'Initializing...'}
+            </span>
+          )}
         </div>
-        <div className="text-[10px] text-muted-foreground">FPS: {fps} | Landmarks: {landmarkCount}</div>
+        {poseError ? (
+          <div className="text-[10px] text-destructive/80 max-w-[280px]">{poseError}</div>
+        ) : (
+          <div className="text-[10px] text-muted-foreground">FPS: {fps} | Landmarks: {landmarkCount}</div>
+        )}
       </div>
     </div>
   );
