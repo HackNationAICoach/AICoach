@@ -37,7 +37,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     return stored === null ? false : stored === 'true';
   });
   const [lastToolCallAt, setLastToolCallAt] = useState<number>(0);
-  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(() => localStorage.getItem('coach_tts_fallback') !== 'false');
+  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(() => localStorage.getItem('coach_tts_fallback') === 'true');
   const [lastLocalSpeakAt, setLastLocalSpeakAt] = useState<number>(0);
 
   const log = (...args: any[]) => {
