@@ -39,15 +39,25 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   // Lazy-load global MediaPipe Pose from CDN if not present
   const ensurePoseLoaded = async () => {
     const w = window as any;
-    if (w && w.Pose) return;
+    if (w && w.Pose && (w.Pose.Pose || typeof w.Pose === 'function')) return;
     await new Promise<void>((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404';
+      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
       script.async = true;
+      script.crossOrigin = 'anonymous';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load MediaPipe Pose script'));
+      script.onerror = () => {
+        const fallback = document.createElement('script');
+        fallback.src = 'https://unpkg.com/@mediapipe/pose@0.5.1675469404/pose.js';
+        fallback.async = true;
+        fallback.crossOrigin = 'anonymous';
+        fallback.onload = () => resolve();
+        fallback.onerror = () => reject(new Error('Failed to load MediaPipe Pose script'));
+        document.head.appendChild(fallback);
+      };
       document.head.appendChild(script);
     });
+    await Promise.resolve();
   };
   const analyzeSquat = (landmarks: any[]): SquatAnalysis => {
     if (!landmarks || landmarks.length === 0) {
@@ -217,8 +227,10 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
 
       try {
         await ensurePoseLoaded();
-        const PoseCtor = (window as any).Pose;
-        if (!PoseCtor) throw new Error('Pose constructor not found on window');
+        const w = window as any;
+        const PoseNS = w.Pose;
+        const PoseCtor = PoseNS?.Pose || PoseNS;
+        if (!PoseCtor) throw new Error('MediaPipe Pose not available on window');
 
         poseRef.current = new PoseCtor({
           locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
@@ -318,9 +330,10 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     <div className="absolute inset-0 pointer-events-none z-30" aria-label="Pose overlay">
       <video
         ref={videoRef}
-        className="hidden"
+        className="absolute pointer-events-none opacity-0 w-px h-px -z-10"
         playsInline
         muted
+        aria-hidden="true"
       />
       <canvas
         ref={canvasRef}
