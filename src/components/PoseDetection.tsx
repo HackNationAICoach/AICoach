@@ -302,15 +302,28 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     };
 
     // Ensure playback and start loop even if metadata already loaded
+    let started = false;
+    let startTimeout: number | null = null;
     const startIfReady = () => {
-      try { video.play(); } catch {}
+      if (started) return;
+      started = true;
+      try {
+        const p = video.play();
+        if (typeof (p as any)?.catch === 'function') (p as Promise<void>).catch(() => {});
+      } catch {}
       startLoop();
+      console.log('[PoseDetection] startIfReady -> loop started, readyState:', video.readyState);
     };
 
     if (video.readyState >= 2) {
       startIfReady();
     } else {
-      video.addEventListener('loadeddata', startIfReady, { once: true });
+      const evs: Array<keyof HTMLVideoElementEventMap> = ['loadedmetadata','loadeddata','canplay','playing'];
+      evs.forEach((ev) => video.addEventListener(ev, startIfReady, { once: true } as any));
+      // Fallback in case events don't fire on some browsers
+      startTimeout = window.setTimeout(() => {
+        if (!started) startIfReady();
+      }, 600);
     }
 
     return () => {
@@ -319,7 +332,12 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      video.removeEventListener('loadeddata', startIfReady);
+      if (startTimeout) {
+        clearTimeout(startTimeout);
+      }
+      ['loadedmetadata','loadeddata','canplay','playing'].forEach((ev) => {
+        video.removeEventListener(ev as any, startIfReady as any);
+      });
       // Do not stop tracks here; CameraFeed controls the lifecycle
       // Just detach to avoid leaks
       video.srcObject = null;
