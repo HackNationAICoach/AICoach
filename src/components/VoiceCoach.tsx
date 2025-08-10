@@ -31,6 +31,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const [fallbackTried, setFallbackTried] = useState(false);
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('coach_debug') === 'true');
   const [logs, setLogs] = useState<string[]>([]);
+  const [safeMode, setSafeMode] = useState(true);
 
   const log = (...args: any[]) => {
     console.log('[VoiceCoach]', ...args);
@@ -118,7 +119,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       const msg = (error as any)?.message || (error as any)?.reason || JSON.stringify(error);
       setLastError(typeof msg === 'string' ? msg : 'Unknown error');
     },
-    overrides: {
+    overrides: safeMode ? undefined : {
       agent: {
         prompt: {
           prompt: `You are an experienced fitness coach specializing in movement analysis and form correction. 
