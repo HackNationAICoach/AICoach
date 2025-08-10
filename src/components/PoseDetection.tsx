@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
-import * as mpPose from '@mediapipe/pose';
 
-import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+
+
 
 interface PoseDetectionProps {
   videoStream: MediaStream | null;
@@ -36,7 +36,19 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
   const [videoDims, setVideoDims] = useState<{w:number;h:number}>({ w: 0, h: 0 });
   const lastTimeRef = useRef<number>(0);
 
-  // Analyze squat form from pose landmarks
+  // Lazy-load global MediaPipe Pose from CDN if not present
+  const ensurePoseLoaded = async () => {
+    const w = window as any;
+    if (w && w.Pose) return;
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load MediaPipe Pose script'));
+      document.head.appendChild(script);
+    });
+  };
   const analyzeSquat = (landmarks: any[]): SquatAnalysis => {
     if (!landmarks || landmarks.length === 0) {
       return {
@@ -204,10 +216,14 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       if (poseRef.current) return;
 
       try {
-        poseRef.current = new mpPose.Pose({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
+        await ensurePoseLoaded();
+        const PoseCtor = (window as any).Pose;
+        if (!PoseCtor) throw new Error('Pose constructor not found on window');
+
+        poseRef.current = new PoseCtor({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
         });
-        console.log('[PoseDetection] Pose instance created, loading assets from jsDelivr (pinned)');
+        console.log('[PoseDetection] Pose instance created (global), assets from jsDelivr (pinned)');
 
         poseRef.current.setOptions({
           modelComplexity: 1,
