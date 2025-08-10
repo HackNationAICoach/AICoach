@@ -26,6 +26,7 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const [usePrivate, setUsePrivate] = useState(() => localStorage.getItem('eleven_private') === 'true');
   const [volume, setVolume] = useState(0.8);
   const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const conversation = useConversation({
     clientTools: {
@@ -52,12 +53,17 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     onDisconnect: () => {
       console.log('AI Coach disconnected');
       onCoachingStop();
+      if (lastError) {
+        alert(`Coach disconnected: ${lastError}`);
+      }
     },
     onMessage: (message) => {
       console.log('Coach message:', message);
     },
     onError: (error) => {
       console.error('Coach error:', error);
+      const msg = (error as any)?.message || (error as any)?.reason || JSON.stringify(error);
+      setLastError(typeof msg === 'string' ? msg : 'Unknown error');
     },
     overrides: {
       agent: {
@@ -80,6 +86,9 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
         },
         firstMessage: "Hey there! I'm your AI fitness coach. When you're ready, say 'start coaching'. I'll watch your movement and give concise feedback.",
         language: "en"
+      },
+      tts: {
+        voiceId: "9BWtsMINqrJLrRacOk9x"
       }
     }
   });
