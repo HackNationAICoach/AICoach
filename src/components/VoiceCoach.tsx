@@ -123,11 +123,11 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       }
     } catch (error) {
       console.error('Failed to start coaching session:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const raw: any = error;
+      const message = (raw && (raw.message || raw.reason || raw.code)) || JSON.stringify(raw) || 'Unknown error';
       alert(`Could not start coaching: ${message}`);
     }
   };
-
   const stopCoaching = async () => {
     try {
       await conversation.endSession();
