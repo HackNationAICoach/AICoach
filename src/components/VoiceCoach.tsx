@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import type { SquatAnalysis } from './PoseDetection';
 
 interface VoiceCoachProps {
@@ -100,15 +101,13 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
 
     try {
       if (usePrivate) {
-        const res = await fetch('/functions/v1/eleven-signed-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agentId })
+        const { data, error } = await supabase.functions.invoke('eleven-signed-url', {
+          body: { agentId },
         });
-        if (!res.ok) throw new Error('Failed to get signed URL');
-        const data = await res.json();
-        if (!data?.signed_url) throw new Error('Invalid signed URL response');
-        await conversation.startSession({ authorization: data.signed_url } as any);
+        if (error) throw new Error(error.message || 'Failed to get signed URL');
+        const signedUrl = (data as any)?.signed_url;
+        if (!signedUrl) throw new Error('Invalid signed URL response');
+        await conversation.startSession({ authorization: signedUrl } as any);
       } else {
         await conversation.startSession({ agentId });
       }

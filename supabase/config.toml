@@ -1,1 +1,4 @@
 project_id = "xwjcbetbnjnwrvietxli"
+
+[functions.eleven-signed-url]
+verify_jwt = false
