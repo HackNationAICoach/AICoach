@@ -165,11 +165,13 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    let latestAnalysis = squatAnalysis;
     if (results.poseLandmarks) {
       setLandmarkCount(results.poseLandmarks.length || 0);
       // Analyze squat form
       const analysis = analyzeSquat(results.poseLandmarks);
-      setSquatAnalysis(analysis);
+       setSquatAnalysis(analysis);
+       latestAnalysis = analysis;
 
       // Draw pose landmarks with simplified connections
       const connections = [
@@ -219,7 +221,7 @@ export const PoseDetection: React.FC<PoseDetectionProps> = ({
       }
     }
 
-    onPoseResults({ ...results, squatAnalysis });
+    onPoseResults({ ...results, squatAnalysis: latestAnalysis });
   };
 
   useEffect(() => {

@@ -32,7 +32,10 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
   const [fallbackTried, setFallbackTried] = useState(false);
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('coach_debug') === 'true');
   const [logs, setLogs] = useState<string[]>([]);
-  const [safeMode, setSafeMode] = useState(true);
+  const [safeMode, setSafeMode] = useState(() => {
+    const stored = localStorage.getItem('coach_safe_mode');
+    return stored === null ? false : stored === 'true';
+  });
 
   const log = (...args: any[]) => {
     console.log('[VoiceCoach]', ...args);
@@ -123,21 +126,21 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
     overrides: safeMode ? undefined : {
       agent: {
         prompt: {
-          prompt: `You are an experienced fitness coach specializing in movement analysis and form correction. 
-          Your role is to provide real-time feedback on exercise form, particularly squats. 
-          Be encouraging, specific, and constructive in your feedback. 
-          Keep instructions clear and concise. Focus on safety and proper form.
-          
+          prompt: `You are an experienced fitness coach specializing in movement analysis and form correction.
+          Your role is to provide real-time feedback on exercise form, particularly squats.
+          Be encouraging, specific, and constructive in your feedback. Keep instructions clear and concise. Focus on safety and proper form.
+
           You can call client tools to get the latest posture or selected move: getPostureSnapshot(), getCurrentMove().
-          When replying, be short and specific: either "Great rep!" or a single correction.
-          
-          When the user is performing squats, provide feedback on:
-          - Squat depth and whether they're reaching proper depth
+          While connected and the user is training, every 3 seconds call getPostureSnapshot() and provide ONE short piece of feedback.
+          If posture is not detected or the user is not squatting, wait silently.
+
+          When the user is performing squats, focus on:
+          - Squat depth and whether they reach proper depth
           - Knee alignment and tracking
           - Back posture and chest position
           - Overall movement quality
-          
-          Be motivational and positive while being specific about corrections needed.`
+
+          Keep replies to a single sentence like "Great rep!" or one specific correction.`
         },
         firstMessage: "Hey there! I'm your AI fitness coach. When you're ready, say 'start coaching'. I'll watch your movement and give concise feedback.",
         language: "en"
@@ -145,9 +148,8 @@ export const VoiceCoach: React.FC<VoiceCoachProps> = ({
       tts: {
         voiceId: "9BWtsMINqrJLrRacOk9x"
       }
-    }
+    },
   });
-
   const { status, isSpeaking } = conversation;
 
   useEffect(() => {
